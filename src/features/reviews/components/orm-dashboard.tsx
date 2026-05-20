@@ -1,17 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, MapPin, RefreshCw } from "lucide-react";
-import { createMockReplies, demoPlaceId, mockReviews } from "../data/mock-reviews";
-import type { CustomerReview, ReplyTone } from "../types";
+import {
+  getReviewsByPlaceId,
+  saveSampleReviewsForPlace
+} from "../api/reviews-client";
+import { createMockReplies, demoPlaceId } from "../data/mock-reviews";
+import type { CustomerReview, ReplyTone, ReviewStorage } from "../types";
 import { MetricCard } from "./metric-card";
 import { ReviewCard } from "./review-card";
 
 export function OrmDashboard() {
   const [placeId, setPlaceId] = useState(demoPlaceId);
-  const [reviews, setReviews] = useState<CustomerReview[]>(mockReviews);
-  const [fetching, setFetching] = useState(false);
+  const [reviews, setReviews] = useState<CustomerReview[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+  const [savingSamples, setSavingSamples] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [storage, setStorage] = useState<ReviewStorage>("mock");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const pendingCount = useMemo(
     () => reviews.filter((review) => review.status === "Pending").length,
@@ -20,13 +27,44 @@ export function OrmDashboard() {
 
   const resolvedCount = reviews.length - pendingCount;
 
-  function handleFetchReviews() {
-    setFetching(true);
+  const loadReviewsForPlace = useCallback(async (targetPlaceId: string) => {
+    setLoadingReviews(true);
+    setErrorMessage(null);
 
-    window.setTimeout(() => {
-      setReviews(mockReviews.map((review) => ({ ...review, placeId })));
-      setFetching(false);
-    }, 550);
+    try {
+      const response = await getReviewsByPlaceId(targetPlaceId);
+      setReviews(response.data);
+      setStorage(response.meta.storage);
+    } catch (error) {
+      setErrorMessage(getClientErrorMessage(error));
+    } finally {
+      setLoadingReviews(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadReviewsForPlace(demoPlaceId);
+  }, [loadReviewsForPlace]);
+
+  async function handleFetchReviews() {
+    const targetPlaceId = placeId.trim();
+
+    if (!targetPlaceId) {
+      return;
+    }
+
+    setSavingSamples(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await saveSampleReviewsForPlace(targetPlaceId);
+      setReviews(response.data);
+      setStorage(response.meta.storage);
+    } catch (error) {
+      setErrorMessage(getClientErrorMessage(error));
+    } finally {
+      setSavingSamples(false);
+    }
   }
 
   function handleGenerateAi(reviewId: string) {
@@ -86,6 +124,9 @@ export function OrmDashboard() {
               Manage Google reviews, generate AI response drafts, and approve the
               selected reply from one workspace.
             </p>
+            <p className="mt-2 text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+              Data source: {storage === "supabase" ? "Supabase" : "Mock fallback"}
+            </p>
           </div>
 
           <div className="grid grid-cols-3 gap-3 text-sm sm:min-w-[360px]">
@@ -113,10 +154,10 @@ export function OrmDashboard() {
             <button
               type="button"
               onClick={handleFetchReviews}
-              disabled={fetching || placeId.trim().length === 0}
+              disabled={savingSamples || loadingReviews || placeId.trim().length === 0}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
-              {fetching ? (
+              {savingSamples ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
                 <RefreshCw className="h-4 w-4" aria-hidden="true" />
@@ -131,25 +172,53 @@ export function OrmDashboard() {
             <div>
               <h2 className="text-lg font-semibold text-slate-950">Review Queue</h2>
               <p className="text-sm text-slate-500">
-                Day 1 uses mock data. API and database wiring come next.
+                Reviews are loaded through /api/reviews. Fetch saves sample reviews
+                until Google Places is wired.
               </p>
             </div>
           </div>
 
-          <div className="grid gap-4">
-            {reviews.map((review) => (
-              <ReviewCard
-                key={review.id}
-                review={review}
-                generating={generatingId === review.id}
-                onGenerateAi={handleGenerateAi}
-                onSelectReply={handleSelectReply}
-                onApprove={handleApprove}
-              />
-            ))}
-          </div>
+          {errorMessage ? (
+            <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              {errorMessage}
+            </div>
+          ) : null}
+
+          {loadingReviews ? (
+            <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-soft">
+              Loading reviews from API...
+            </div>
+          ) : null}
+
+          {!loadingReviews && reviews.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center shadow-soft">
+              <h3 className="text-base font-semibold text-slate-950">No reviews yet</h3>
+              <p className="mt-2 text-sm text-slate-500">
+                Add sample reviews with the Fetch Reviews button to verify the database flow.
+              </p>
+            </div>
+          ) : null}
+
+          {!loadingReviews && reviews.length > 0 ? (
+            <div className="grid gap-4">
+              {reviews.map((review) => (
+                <ReviewCard
+                  key={review.id}
+                  review={review}
+                  generating={generatingId === review.id}
+                  onGenerateAi={handleGenerateAi}
+                  onSelectReply={handleSelectReply}
+                  onApprove={handleApprove}
+                />
+              ))}
+            </div>
+          ) : null}
         </section>
       </div>
     </main>
   );
+}
+
+function getClientErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Unexpected client error.";
 }
