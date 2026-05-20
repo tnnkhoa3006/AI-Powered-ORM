@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mockReviews } from "../data/mock-reviews";
 import type { CreateReviewInput } from "../schemas";
-import type { CustomerReview } from "../types";
+import type { AiReplies, CustomerReview } from "../types";
 import { mapCreateReviewInputToCustomerReview } from "./review-mapper";
 
 let reviewStore: CustomerReview[] = mockReviews.map((review) => ({
@@ -33,6 +33,31 @@ export function saveMockReviews(inputs: CreateReviewInput[]) {
   });
 
   return filterAndSortReviews(savedReviews);
+}
+
+export function getMockReviewById(reviewId: string) {
+  return reviewStore.find((review) => review.id === reviewId) ?? null;
+}
+
+export function updateMockReviewAiReplies(reviewId: string, aiReplies: AiReplies) {
+  const review = getMockReviewById(reviewId);
+
+  if (!review) {
+    return null;
+  }
+
+  const updatedReview: CustomerReview = {
+    ...review,
+    aiReplies,
+    selectedTone: undefined,
+    selectedReply: undefined
+  };
+
+  reviewStore = reviewStore.map((currentReview) =>
+    currentReview.id === reviewId ? updatedReview : currentReview
+  );
+
+  return updatedReview;
 }
 
 function findExistingReview(input: CreateReviewInput) {

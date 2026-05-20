@@ -8,6 +8,8 @@ export type ReviewStorage = "supabase" | "mock";
 
 export type ReviewFetchSource = "sample";
 
+export type AiReplyProvider = "openai" | "mock";
+
 export type CustomerReview = {
   id: string;
   externalReviewId?: string;

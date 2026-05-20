@@ -96,10 +96,12 @@ export const mockReviews: CustomerReview[] = sampleReviewTemplates.slice(0, 3).m
 );
 
 export function createMockReplies(review: CustomerReview): AiReplies {
+  const context = getReplyContext(review);
+
   return {
-    standard: `Cam on ${review.authorName} da danh gia. Chung toi ghi nhan phan hoi cua ban va rat tiec vi trai nghiem chua tron ven. Doi ngu se kiem tra lai de cai thien chat luong dich vu.`,
-    friendly: `Cam on ban da chia se that long, ${review.authorName}. Team rat tiec vi ban chua hai long o mot so diem. Chung toi se chuyen phan hoi nay cho bo phan phu trach va mong co co hoi don ban quay lai.`,
-    solution: "Chung toi xin loi ve bat tien trong trai nghiem cua ban. Quan ly van hanh se ra soat noi dung review nay trong ngay hom nay va uu tien xu ly nhung van de anh huong truc tiep den khach hang."
+    standard: `Cam on ${review.authorName} da gui danh gia. Chung toi da ghi nhan phan hoi ve ${context.issue} va se xem lai voi bo phan phu trach de cai thien trai nghiem khach hang trong thoi gian toi.`,
+    friendly: `${review.authorName} oi, cam on ban da chia se rat cu the. Team rat vui khi nhan duoc diem ban hai long va cung tiec ve ${context.issue}. Chung toi mong co co hoi don ban quay lai voi trai nghiem tot hon.`,
+    solution: `Chung toi xin loi ve bat tien lien quan den ${context.issue}. ${context.action} Phan hoi cua ban se duoc uu tien theo doi de han che viec tuong tu lap lai voi cac khach tiep theo.`
   };
 }
 
@@ -133,4 +135,48 @@ function createReviewedAt(index: number) {
   reviewedAt.setMinutes(reviewedAt.getMinutes() - index * 37);
 
   return reviewedAt.toISOString();
+}
+
+function getReplyContext(review: CustomerReview) {
+  const content = review.content.toLowerCase();
+
+  if (content.includes("check-in") || content.includes("cho lau") || content.includes("cham")) {
+    return {
+      issue: "thoi gian cho va quy trinh check-in",
+      action: "Quan ly le tan se ra soat lai lich truc va cach xu ly khach den cung thoi diem."
+    };
+  }
+
+  if (content.includes("ban") || content.includes("sach") || content.includes("housekeeping")) {
+    return {
+      issue: "ve sinh phong va toc do ho tro housekeeping",
+      action: "Bo phan housekeeping se kiem tra lai checklist ve sinh truoc khi ban giao phong."
+    };
+  }
+
+  if (content.includes("wifi") || content.includes("mang")) {
+    return {
+      issue: "chat luong ket noi wifi",
+      action: "Doi ky thuat se kiem tra lai diem phat song va tai ket noi vao khung gio cao diem."
+    };
+  }
+
+  if (content.includes("bua sang")) {
+    return {
+      issue: "lua chon bua sang",
+      action: "Bo phan am thuc se xem lai thuc don va bo sung lua chon phu hop hon."
+    };
+  }
+
+  if (content.includes("dieu hoa") || content.includes("cach am")) {
+    return {
+      issue: "tien nghi va su yen tinh trong phong",
+      action: "Doi bao tri se kiem tra lai trang thiet bi va cac phong co phan anh tuong tu."
+    };
+  }
+
+  return {
+    issue: "nhung diem chua tron ven trong trai nghiem",
+    action: "Quan ly van hanh se xem lai phan hoi nay va lam viec voi bo phan lien quan."
+  };
 }

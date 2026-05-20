@@ -1,4 +1,9 @@
-import type { CustomerReview, ReviewFetchSource, ReviewStorage } from "../types";
+import type {
+  AiReplyProvider,
+  CustomerReview,
+  ReviewFetchSource,
+  ReviewStorage
+} from "../types";
 
 type ReviewsApiResponse = {
   data: CustomerReview[];
@@ -6,6 +11,15 @@ type ReviewsApiResponse = {
     count: number;
     storage: ReviewStorage;
     source?: ReviewFetchSource;
+  };
+};
+
+type GenerateAiApiResponse = {
+  data: CustomerReview;
+  meta: {
+    storage: ReviewStorage;
+    provider: AiReplyProvider;
+    fallbackReason?: string;
   };
 };
 
@@ -37,6 +51,17 @@ export async function fetchReviewsForPlace(placeId: string) {
   return parseReviewsResponse(response);
 }
 
+export async function generateAiReplies(reviewId: string) {
+  const response = await fetch(`/api/reviews/${reviewId}/generate-ai`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+
+  return parseGenerateAiResponse(response);
+}
+
 async function parseReviewsResponse(response: Response): Promise<ReviewsApiResponse> {
   const payload: unknown = await response.json();
 
@@ -45,6 +70,16 @@ async function parseReviewsResponse(response: Response): Promise<ReviewsApiRespo
   }
 
   return payload as ReviewsApiResponse;
+}
+
+async function parseGenerateAiResponse(response: Response): Promise<GenerateAiApiResponse> {
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    throw new Error(getApiErrorMessage(payload));
+  }
+
+  return payload as GenerateAiApiResponse;
 }
 
 function getApiErrorMessage(payload: unknown) {

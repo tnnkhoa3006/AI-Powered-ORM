@@ -51,6 +51,14 @@ export function mapCreateReviewInputToCustomerReview(
   };
 }
 
+export function mapAiRepliesToJson(replies: AiReplies): Json {
+  return {
+    standard: replies.standard,
+    friendly: replies.friendly,
+    solution: replies.solution
+  };
+}
+
 function mapReviewStatus(status: string): ReviewStatus {
   return status === "Resolved" ? "Resolved" : "Pending";
 }

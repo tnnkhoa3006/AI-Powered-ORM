@@ -4,6 +4,24 @@ export const reviewStatusSchema = z.enum(["Pending", "Resolved"]);
 
 export const replyToneSchema = z.enum(["standard", "friendly", "solution"]);
 
+export const aiRepliesSchema = z
+  .object({
+    standard: z.string().trim().min(1),
+    friendly: z.string().trim().min(1),
+    solution: z.string().trim().min(1)
+  })
+  .strict();
+
+export const aiRepliesResponseSchema = z.union([
+  aiRepliesSchema,
+  z
+    .object({
+      replies: aiRepliesSchema
+    })
+    .strict()
+    .transform((value) => value.replies)
+]);
+
 export const createReviewInputSchema = z.object({
   externalReviewId: z.string().trim().min(1).optional(),
   placeId: z.string().trim().min(1),

@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, MapPin, RefreshCw } from "lucide-react";
 import {
   fetchReviewsForPlace,
+  generateAiReplies,
   getReviewsByPlaceId
 } from "../api/reviews-client";
-import { createMockReplies, demoPlaceId } from "../data/mock-reviews";
+import { demoPlaceId } from "../data/mock-reviews";
 import type { CustomerReview, ReplyTone, ReviewFetchSource, ReviewStorage } from "../types";
 import { MetricCard } from "./metric-card";
 import { ReviewCard } from "./review-card";
@@ -70,19 +71,22 @@ export function OrmDashboard() {
     }
   }
 
-  function handleGenerateAi(reviewId: string) {
+  async function handleGenerateAi(reviewId: string) {
     setGeneratingId(reviewId);
+    setErrorMessage(null);
 
-    window.setTimeout(() => {
+    try {
+      const response = await generateAiReplies(reviewId);
       setReviews((currentReviews) =>
         currentReviews.map((review) =>
-          review.id === reviewId
-            ? { ...review, aiReplies: createMockReplies(review), selectedTone: undefined }
-            : review
+          review.id === reviewId ? response.data : review
         )
       );
+    } catch (error) {
+      setErrorMessage(getClientErrorMessage(error));
+    } finally {
       setGeneratingId(null);
-    }, 650);
+    }
   }
 
   function handleSelectReply(reviewId: string, tone: ReplyTone) {
