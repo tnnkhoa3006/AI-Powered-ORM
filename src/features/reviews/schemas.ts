@@ -18,4 +18,8 @@ export const saveReviewsRequestSchema = z.object({
   reviews: z.array(createReviewInputSchema).min(1).max(20)
 });
 
+export const fetchReviewsRequestSchema = z.object({
+  placeId: z.string().trim().min(1)
+});
+
 export type CreateReviewInput = z.infer<typeof createReviewInputSchema>;

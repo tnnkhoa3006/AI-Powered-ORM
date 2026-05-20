@@ -1,12 +1,11 @@
-import { mockReviews } from "../data/mock-reviews";
-import type { CreateReviewInput } from "../schemas";
-import type { CustomerReview, ReviewStorage } from "../types";
+import type { CustomerReview, ReviewFetchSource, ReviewStorage } from "../types";
 
 type ReviewsApiResponse = {
   data: CustomerReview[];
   meta: {
     count: number;
     storage: ReviewStorage;
+    source?: ReviewFetchSource;
   };
 };
 
@@ -24,30 +23,18 @@ export async function getReviewsByPlaceId(placeId: string) {
   return parseReviewsResponse(response);
 }
 
-export async function saveSampleReviewsForPlace(placeId: string) {
-  const response = await fetch("/api/reviews", {
+export async function fetchReviewsForPlace(placeId: string) {
+  const response = await fetch("/api/reviews/fetch", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      reviews: buildSampleReviewInputs(placeId)
+      placeId
     })
   });
 
   return parseReviewsResponse(response);
-}
-
-function buildSampleReviewInputs(placeId: string): CreateReviewInput[] {
-  return mockReviews.map((review) => ({
-    externalReviewId: review.externalReviewId ?? review.id,
-    placeId,
-    authorName: review.authorName,
-    rating: review.rating,
-    content: review.content,
-    status: review.status,
-    createdAt: review.createdAt
-  }));
 }
 
 async function parseReviewsResponse(response: Response): Promise<ReviewsApiResponse> {

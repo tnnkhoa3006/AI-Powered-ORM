@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, MapPin, RefreshCw } from "lucide-react";
 import {
-  getReviewsByPlaceId,
-  saveSampleReviewsForPlace
+  fetchReviewsForPlace,
+  getReviewsByPlaceId
 } from "../api/reviews-client";
 import { createMockReplies, demoPlaceId } from "../data/mock-reviews";
-import type { CustomerReview, ReplyTone, ReviewStorage } from "../types";
+import type { CustomerReview, ReplyTone, ReviewFetchSource, ReviewStorage } from "../types";
 import { MetricCard } from "./metric-card";
 import { ReviewCard } from "./review-card";
 
@@ -18,6 +18,7 @@ export function OrmDashboard() {
   const [savingSamples, setSavingSamples] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [storage, setStorage] = useState<ReviewStorage>("mock");
+  const [reviewSource, setReviewSource] = useState<ReviewFetchSource | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const pendingCount = useMemo(
@@ -35,6 +36,7 @@ export function OrmDashboard() {
       const response = await getReviewsByPlaceId(targetPlaceId);
       setReviews(response.data);
       setStorage(response.meta.storage);
+      setReviewSource(null);
     } catch (error) {
       setErrorMessage(getClientErrorMessage(error));
     } finally {
@@ -57,9 +59,10 @@ export function OrmDashboard() {
     setErrorMessage(null);
 
     try {
-      const response = await saveSampleReviewsForPlace(targetPlaceId);
+      const response = await fetchReviewsForPlace(targetPlaceId);
       setReviews(response.data);
       setStorage(response.meta.storage);
+      setReviewSource(response.meta.source ?? null);
     } catch (error) {
       setErrorMessage(getClientErrorMessage(error));
     } finally {
@@ -121,11 +124,12 @@ export function OrmDashboard() {
               UCOrm Dashboard
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Manage Google reviews, generate AI response drafts, and approve the
-              selected reply from one workspace.
+              Manage customer reviews, generate AI response drafts, and approve
+              the selected reply from one workspace.
             </p>
             <p className="mt-2 text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
               Data source: {storage === "supabase" ? "Supabase" : "Mock fallback"}
+              {reviewSource ? ` | Review source: ${getReviewSourceLabel(reviewSource)}` : ""}
             </p>
           </div>
 
@@ -142,12 +146,12 @@ export function OrmDashboard() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <label className="flex min-w-0 flex-1 items-center gap-3 rounded-md border border-slate-300 bg-white px-3 py-2.5 focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100">
               <MapPin className="h-5 w-5 shrink-0 text-slate-500" aria-hidden="true" />
-              <span className="sr-only">Google Place ID</span>
+              <span className="sr-only">Place ID</span>
               <input
                 value={placeId}
                 onChange={(event) => setPlaceId(event.target.value)}
                 className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-400"
-                placeholder="Enter Google Place ID"
+                placeholder="Enter Place ID"
               />
             </label>
 
@@ -172,8 +176,7 @@ export function OrmDashboard() {
             <div>
               <h2 className="text-lg font-semibold text-slate-950">Review Queue</h2>
               <p className="text-sm text-slate-500">
-                Reviews are loaded through /api/reviews. Fetch saves sample reviews
-                until Google Places is wired.
+                Fetch saves sample reviews to the database for the current Place ID.
               </p>
             </div>
           </div>
@@ -221,4 +224,8 @@ export function OrmDashboard() {
 
 function getClientErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unexpected client error.";
+}
+
+function getReviewSourceLabel(source: ReviewFetchSource) {
+  return source === "sample" ? "Sample reviews" : source;
 }

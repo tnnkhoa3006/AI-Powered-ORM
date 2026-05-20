@@ -6,6 +6,8 @@ export type AiReplies = Record<ReplyTone, string>;
 
 export type ReviewStorage = "supabase" | "mock";
 
+export type ReviewFetchSource = "sample";
+
 export type CustomerReview = {
   id: string;
   externalReviewId?: string;
