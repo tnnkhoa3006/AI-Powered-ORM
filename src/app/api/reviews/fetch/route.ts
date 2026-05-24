@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
       meta: {
         count: result.reviews.length,
         storage: result.storage,
-        source: result.source
+        source: result.source,
+        fallbackReason: result.fallbackReason
       }
     });
   } catch (error) {

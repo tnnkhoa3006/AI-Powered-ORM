@@ -16,10 +16,11 @@ export function OrmDashboard() {
   const [placeId, setPlaceId] = useState(demoPlaceId);
   const [reviews, setReviews] = useState<CustomerReview[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
-  const [savingSamples, setSavingSamples] = useState(false);
+  const [fetchingReviews, setFetchingReviews] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [storage, setStorage] = useState<ReviewStorage>("mock");
   const [reviewSource, setReviewSource] = useState<ReviewFetchSource | null>(null);
+  const [fetchFallbackReason, setFetchFallbackReason] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const pendingCount = useMemo(
@@ -38,6 +39,7 @@ export function OrmDashboard() {
       setReviews(response.data);
       setStorage(response.meta.storage);
       setReviewSource(null);
+      setFetchFallbackReason(null);
     } catch (error) {
       setErrorMessage(getClientErrorMessage(error));
     } finally {
@@ -56,7 +58,7 @@ export function OrmDashboard() {
       return;
     }
 
-    setSavingSamples(true);
+    setFetchingReviews(true);
     setErrorMessage(null);
 
     try {
@@ -64,10 +66,11 @@ export function OrmDashboard() {
       setReviews(response.data);
       setStorage(response.meta.storage);
       setReviewSource(response.meta.source ?? null);
+      setFetchFallbackReason(response.meta.fallbackReason ?? null);
     } catch (error) {
       setErrorMessage(getClientErrorMessage(error));
     } finally {
-      setSavingSamples(false);
+      setFetchingReviews(false);
     }
   }
 
@@ -150,22 +153,22 @@ export function OrmDashboard() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <label className="flex min-w-0 flex-1 items-center gap-3 rounded-md border border-slate-300 bg-white px-3 py-2.5 focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100">
               <MapPin className="h-5 w-5 shrink-0 text-slate-500" aria-hidden="true" />
-              <span className="sr-only">Place ID</span>
+              <span className="sr-only">Place ID or SerpApi data ID</span>
               <input
                 value={placeId}
                 onChange={(event) => setPlaceId(event.target.value)}
                 className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-400"
-                placeholder="Enter Place ID"
+                placeholder="Enter Google place_id or SerpApi data_id"
               />
             </label>
 
             <button
               type="button"
               onClick={handleFetchReviews}
-              disabled={savingSamples || loadingReviews || placeId.trim().length === 0}
+              disabled={fetchingReviews || loadingReviews || placeId.trim().length === 0}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
-              {savingSamples ? (
+              {fetchingReviews ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
                 <RefreshCw className="h-4 w-4" aria-hidden="true" />
@@ -180,7 +183,8 @@ export function OrmDashboard() {
             <div>
               <h2 className="text-lg font-semibold text-slate-950">Review Queue</h2>
               <p className="text-sm text-slate-500">
-                Fetch saves sample reviews to the database for the current Place ID.
+                Fetch uses SerpApi when configured, then falls back to sample
+                reviews if needed.
               </p>
             </div>
           </div>
@@ -188,6 +192,12 @@ export function OrmDashboard() {
           {errorMessage ? (
             <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
               {errorMessage}
+            </div>
+          ) : null}
+
+          {fetchFallbackReason ? (
+            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              Using sample reviews: {fetchFallbackReason}
             </div>
           ) : null}
 
@@ -231,5 +241,5 @@ function getClientErrorMessage(error: unknown) {
 }
 
 function getReviewSourceLabel(source: ReviewFetchSource) {
-  return source === "sample" ? "Sample reviews" : source;
+  return source === "serpapi" ? "SerpApi" : "Sample reviews";
 }

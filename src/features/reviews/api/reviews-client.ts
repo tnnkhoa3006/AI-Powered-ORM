@@ -11,6 +11,7 @@ type ReviewsApiResponse = {
     count: number;
     storage: ReviewStorage;
     source?: ReviewFetchSource;
+    fallbackReason?: string;
   };
 };
 
